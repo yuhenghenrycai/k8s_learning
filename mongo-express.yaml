@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-express
+  labels:
+    app: mongo-express
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo-express
+  template:
+    metadata:
+      labels:
+        app: mongo-express
+    spec:
+      containers:
+        - name: mongo-express
+          image: mongo-express
+          ports:
+            - containerPort: 8081
+          env:
+            - name: ME_CONFIG_MONGODB_ADMINUSERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: mongo-root-username
+            - name: ME_CONFIG_MONGODB_ADMINPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: mongo-root-password
+            - name: ME_CONFIG_MONGODB_SERVER
+              valueFrom:
+                configMapKeyRef:
+                  name: mongodb-configmap
+                  key: database_url
+# because each deployment usually has a service, so we usually put them in the same file
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-express-service
+spec:
+  # selector specify which deployment this Service will forward the request to
+  selector:
+    # this matches the labels above in mongo-express deployment
+    app: mongo-express
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      # internally accessible port number
+      port: 8081
+      # port number which the service will forward the request to
+      targetPort: 8081
+      # Because you specify the service type as 'LoadBalancer', that means you want to expose it externally. So you will need to specify the externally accessible port number, i.e., nodePort
+      nodePort: 30000
